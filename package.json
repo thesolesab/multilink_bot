@@ -1,0 +1,32 @@
+{
+  "name": "multilink_bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thesolesab/multilink_bot.git"
+  },
+  "keywords": [],
+  "author": "R&L",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/thesolesab/multilink_bot/issues"
+  },
+  "homepage": "https://github.com/thesolesab/multilink_bot#readme",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.3",
+    "node-telegram-bot-api": "^0.67.0",
+    "open-graph-scraper": "^6.11.0",
+    "puppeteer": "^24.34.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
