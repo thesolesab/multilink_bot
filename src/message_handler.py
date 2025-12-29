@@ -34,20 +34,18 @@ class BotHandlers:
         match = url_regex.search(text)
         
         if match:
-            parsing_msg = await update.message.reply_text('Parsing your link...')
+            parsing_msg = await update.message.reply_text('<i>🎶Parsing your link...</i>', parse_mode='HTML')
             
             data = await parse_link(match.group(0))
-            print(f"Parsed data: {data}")  # Для отладки
             
             if 'error' in data:
-                await update.message.reply_text(self.error_message)
+                await parsing_msg.edit_text(self.error_message)
                 return
             
             response = f"*{escape_markdown(data['artists'])}* \\- {escape_markdown(data['title'])}\n"
             response += f"*URL:* {escape_markdown(data['url'])}\n"
             
-            await parsing_msg.delete()
-            await update.message.reply_text(response, parse_mode='MarkdownV2')
+            await parsing_msg.edit_text(response, parse_mode='MarkdownV2')
         else:
             await update.message.reply_text(self.invalid_message)
     
