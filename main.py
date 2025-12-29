@@ -22,8 +22,8 @@ class TelegramBot:
         self.handlers.setup_handlers(self.application)
     
     def run(self):
-        """Запускает бота в режиме polling"""
-        print("Бот запущен! Нажмите Ctrl+C для остановки.")
+        """Запускает бота в режиме webhook или polling"""
+        print("Бот запущен!")
         
         # Добавляем обработчик ошибок
         async def error_handler(update, context):
@@ -31,7 +31,23 @@ class TelegramBot:
         
         self.application.add_error_handler(error_handler)
         
-        self.application.run_polling()
+        # Проверяем, использовать ли webhook
+        use_webhook = os.getenv('USE_WEBHOOK', 'false').lower() == 'true'
+        webhook_url = os.getenv('WEBHOOK_URL')
+        
+        if use_webhook and webhook_url:
+            print(f"Запуск в режиме webhook: {webhook_url}")
+            self.application.run_webhook(
+                listen="0.0.0.0",
+                port=int(os.getenv('WEBHOOK_PORT', 8443)),
+                url_path=os.getenv('WEBHOOK_PATH', 'webhook'),
+                webhook_url=webhook_url,
+                cert=None,  # Для HTTPS, если нужно
+                key=None
+            )
+        else:
+            print("Запуск в режиме polling")
+            self.application.run_polling()
 
 def main():
     try:
