@@ -43,11 +43,11 @@ class BotHandlers:
                 await update.message.reply_text(self.error_message)
                 return
             
-            response = f"*{escape_markdown(data['artists'])}* - {escape_markdown(data['title'])}\n"
-            response += f"*URL:* {data['url']}\n"
+            response = f"*{escape_markdown(data['artists'])}* \\- {escape_markdown(data['title'])}\n"
+            response += f"*URL:* {escape_markdown(data['url'])}\n"
             
             await parsing_msg.delete()
-            await update.message.reply_text(response, parse_mode='Markdown')
+            await update.message.reply_text(response, parse_mode='MarkdownV2')
         else:
             await update.message.reply_text(self.invalid_message)
     

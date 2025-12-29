@@ -1,3 +1,4 @@
+import os
 import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
@@ -26,18 +27,15 @@ class SpotifyParser(Parser):
         soup = BeautifulSoup(html, 'html.parser')
         
         og_title = soup.find('meta', property='og:title')
-        og_description = soup.find('meta', property='og:description')
+        artists_meta = soup.find('meta', {'name': 'music:musician_description'}) or soup.find('meta', {'property': 'music:musician_description'})
         
         title = og_title.get('content', 'Unknown Title') if og_title else 'Unknown Title'
-        description = og_description.get('content', '') if og_description else ''
-        
-        artists = description.split(title)[0] if title in description else 'Unknown Artist'
-        artists = artists.replace('by', '').replace('·', '').strip()
+        artists = artists_meta.get('content', 'Unknown Artist') if artists_meta else 'Unknown Artist'
         
         return {
             'url': url,
             'original_service': self.service,
-            'title': title.strip(),
+            'title': title,
             'artists': artists,
         }
 
@@ -45,33 +43,25 @@ class YandexParser(Parser):
     @log_async_method
     async def parse(self, url):
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-            }
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers) as response:
-                    html = await response.text()
+            # Извлечь track_id из URL
+            import re
+            match = re.search(r'/track/(\d+)', url)
+            if not match:
+                return {
+                    'url': url,
+                    'original_service': self.service,
+                    'title': 'Yandex Music Track',
+                    'artists': 'Unknown Artist',
+                }
+                
+            track_id = match.group(1)
+            print(f"Extracted track_id: {track_id}")
             
-            soup = BeautifulSoup(html, 'html.parser')
-            
-            og_title = soup.find('meta', property='og:title')
-            og_description = soup.find('meta', property='og:description')
-            
-            title = og_title.get('content', 'Yandex Music Track') if og_title else 'Yandex Music Track'
-            description = og_description.get('content', '') if og_description else ''
-            
-            # Для Yandex Music описание может содержать артиста
-            artists = 'Unknown Artist'
-            if ' — ' in title:
-                parts = title.split(' — ')
-                if len(parts) >= 2:
-                    artists = parts[0].strip()
-                    title = parts[1].strip()
+            from yandex_music import Client
+            client = Client(os.getenv("YANDEX_MUSIC_TOKEN")).init()
+            track = client.tracks([track_id])[0]
+            title = track.title
+            artists = ', '.join(name.name for name in track.artists)
             
             return {
                 'url': url,
@@ -84,10 +74,10 @@ class YandexParser(Parser):
             return {
                 'url': url,
                 'original_service': self.service,
-                'title': 'Yandex Music Track',
+                'title': 'Unknown Title',
                 'artists': 'Unknown Artist',
             }
-
+                
 class MTSParser(Parser):
     @log_async_method
     async def parse(self, url):
@@ -118,27 +108,27 @@ class MTSParser(Parser):
             
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Для MTS попробуем найти мета-теги
-            og_title = soup.find('meta', property='og:title')
-            og_description = soup.find('meta', property='og:description')
-            
-            title = og_title.get('content', 'Unknown Title') if og_title else 'Unknown Title'
-            # Очистить название от лишней информации
-            if ' - слушать песню онлайн' in title:
-                title = title.split(' - слушать песню онлайн')[0].strip()
-            description = og_description.get('content', '') if og_description else ''
-            
-            # Извлечь артиста из описания, если возможно
-            artists = 'Unknown Artist'
-            if 'исполнителя' in description:
-                parts = description.split('исполнителя')
-                if len(parts) > 1:
-                    artist_part = parts[1].split('!')[0].strip()
-                    artists = artist_part
-            elif 'by' in description:
-                parts = description.split('by')
-                if len(parts) > 1:
-                    artists = parts[1].split('·')[0].strip()
+            # Ищем заголовок трека в h1 элементе
+            track_title_elem = soup.find('h1', {'data-testid': 'playlist-title', 'itemprop': 'name'})
+            if track_title_elem:
+                full_title = track_title_elem.get_text(strip=True)
+                # Разделяем на артистов и название по " - "
+                if ' - ' in full_title:
+                    artists, title = full_title.split(' - ', 1)
+                    artists = artists.strip()
+                    title = title.strip()
+                else:
+                    # Если нет разделителя, считаем всё названием
+                    artists = 'Unknown Artist'
+                    title = full_title.strip()
+            else:
+                # Fallback на мета-теги, если h1 не найден
+                og_title = soup.find('meta', property='og:title')
+                title = og_title.get('content', 'Unknown Title') if og_title else 'Unknown Title'
+                # Очистить название от лишней информации
+                if ' - слушать песню онлайн' in title:
+                    title = title.split(' - слушать песню онлайн')[0].strip()
+                artists = 'Unknown Artist'
             
             return {
                 'url': url,

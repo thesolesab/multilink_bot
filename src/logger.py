@@ -8,6 +8,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+# Отключаем подробные логи httpx (запросы polling)
+logging.getLogger('httpx').setLevel(logging.WARNING)
+
 def log_method(func):
     """Декоратор для логирования вызовов методов"""
     @wraps(func)
