@@ -3,6 +3,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, fil
 from .link_parser import parse_link
 from .markdown import escape_markdown
 from .logger import log_async_method
+from .link_finder import find_link
 
 class BotHandlers:
     """Класс для обработки сообщений Telegram-бота"""
@@ -34,17 +35,22 @@ class BotHandlers:
         match = url_regex.search(text)
         
         if match:
-            parsing_msg = await update.message.reply_text('<i>🎶Parsing your link...</i>', parse_mode='HTML')
+            parsing_msg = await update.message.reply_text('🎶Parsing your link\\.\\.\\.', parse_mode='MarkdownV2')
             
             data = await parse_link(match.group(0))
+            links = await find_link(data)
+            print(f'Parsed data: {data}, links: {links}')
             
             if 'error' in data:
                 await parsing_msg.edit_text(self.error_message)
                 return
             
             response = f"*{escape_markdown(data['artists'])}* \\- {escape_markdown(data['title'])}\n"
-            response += f"*URL:* {escape_markdown(data['url'])}\n"
-            
+            response += f'[{escape_markdown(data["original_service"]["name"])}]({data["url"]})\n'
+            for link_info in links:
+                if link_info.get('url'):
+                    response += f'[{escape_markdown(link_info["service"])}]({link_info["url"]})\n'  
+
             await parsing_msg.edit_text(response, parse_mode='MarkdownV2')
         else:
             await update.message.reply_text(self.invalid_message)

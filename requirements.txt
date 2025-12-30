@@ -6,3 +6,5 @@ python-dotenv==1.0.0
 webdriver-manager==4.0.1
 aiohttp==3.9.1
 yandex-music==2.1.0
+vk-api==11.10.0
+spotipy==2.25.2
