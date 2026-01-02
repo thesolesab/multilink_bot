@@ -15,9 +15,10 @@ TOKEN = os.getenv('TELEGRAM_TOKEN')
 application = None
 
 # Предварительно инициализируем приложение, если токен доступен
+# Примечание: инициализация будет выполнена асинхронно при первом запросе
 if TOKEN:
     try:
-        print("Pre-initializing application...")
+        print("Pre-creating application...")
         application = ApplicationBuilder().token(TOKEN).build()
         handlers = BotHandlers()
         handlers.setup_handlers(application)
@@ -29,9 +30,9 @@ if TOKEN:
             traceback.print_exc()
         
         application.add_error_handler(error_handler)
-        print("Application pre-initialized successfully")
+        print("Application pre-created successfully (will be initialized on first request)")
     except Exception as e:
-        print(f"Error pre-initializing application: {e}")
+        print(f"Error pre-creating application: {e}")
         application = None
 
 def get_application():
@@ -61,6 +62,13 @@ async def process_update_async(update_data):
     try:
         print(f"Processing update: {json.dumps(update_data, indent=2)[:200]}")
         app = get_application()
+        
+        # Инициализируем приложение, если еще не инициализировано
+        if not app.initialized:
+            print("Initializing application...")
+            await app.initialize()
+            print("Application initialized")
+        
         update = Update.de_json(update_data, app.bot)
         if update:
             print(f"Update parsed: {update.update_id}")
