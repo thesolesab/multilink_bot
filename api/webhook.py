@@ -19,19 +19,27 @@ def get_application():
     global application
     if application is None:
         if not TOKEN:
+            print("ERROR: TELEGRAM_TOKEN не найден в переменных окружения")
             raise ValueError("TELEGRAM_TOKEN не найден в переменных окружения")
+        print(f"Creating application with token: {TOKEN[:10]}...")
         application = ApplicationBuilder().token(TOKEN).build()
         handlers = BotHandlers()
         handlers.setup_handlers(application)
+        print("Application created successfully")
     return application
 
 async def process_update_async(update_data):
     """Асинхронная обработка update"""
     try:
+        print(f"Processing update: {json.dumps(update_data, indent=2)[:200]}")
         app = get_application()
         update = Update.de_json(update_data, app.bot)
         if update:
+            print(f"Update parsed: {update.update_id}")
             await app.process_update(update)
+            print("Update processed successfully")
+        else:
+            print("Warning: Update is None")
     except Exception as e:
         print(f"Error in process_update_async: {e}")
         import traceback
@@ -44,9 +52,13 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Обрабатывает POST запросы от Telegram"""
         try:
+            print("Received POST request")
             # Читаем тело запроса
             content_length = int(self.headers.get('Content-Length', 0))
+            print(f"Content-Length: {content_length}")
+            
             if content_length == 0:
+                print("Error: Empty body")
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -54,9 +66,20 @@ class handler(BaseHTTPRequestHandler):
                 return
                 
             body = self.rfile.read(content_length)
-            update_data = json.loads(body.decode('utf-8'))
+            print(f"Body received: {len(body)} bytes")
+            
+            try:
+                update_data = json.loads(body.decode('utf-8'))
+            except json.JSONDecodeError as e:
+                print(f"JSON decode error: {e}")
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'Invalid JSON'}).encode())
+                return
             
             if not update_data:
+                print("Error: Empty update_data")
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -76,20 +99,16 @@ class handler(BaseHTTPRequestHandler):
                 import traceback
                 traceback.print_exc()
                 # Все равно возвращаем 200, чтобы Telegram не повторял запрос
-                pass
             
             # Отправляем успешный ответ
+            print("Sending 200 OK response")
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({'ok': True}).encode())
+            response = json.dumps({'ok': True})
+            self.wfile.write(response.encode())
+            self.wfile.flush()
             
-        except json.JSONDecodeError as e:
-            print(f"JSON decode error: {e}")
-            self.send_response(400)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': 'Invalid JSON'}).encode())
         except Exception as e:
             print(f"Error processing update: {e}")
             import traceback
@@ -104,12 +123,13 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Обрабатывает GET запросы (для проверки работоспособности)"""
         try:
+            print("Received GET request")
             # Проверяем, что токен установлен
             if not TOKEN:
                 status = {'status': 'error', 'message': 'TELEGRAM_TOKEN not configured'}
                 status_code = 500
             else:
-                status = {'status': 'ok', 'service': 'telegram-webhook'}
+                status = {'status': 'ok', 'service': 'telegram-webhook', 'token_set': True}
                 status_code = 200
             
             self.send_response(status_code)
@@ -117,11 +137,12 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(status).encode())
         except Exception as e:
+            print(f"Error in GET handler: {e}")
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({'error': str(e)}).encode())
     
     def log_message(self, format, *args):
-        """Отключаем логирование запросов"""
+        """Отключаем стандартное логирование, используем print"""
         pass
