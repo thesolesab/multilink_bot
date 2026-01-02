@@ -27,3 +27,4 @@ coverage.xml
 *.swo
 *~
 .vercel
+.env*.local

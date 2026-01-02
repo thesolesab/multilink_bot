@@ -64,7 +64,7 @@ class YandexFinder(Finder):
                 type_ = search_result.best.type
                 best = search_result.best.result
                 
-                if type_ == 'track':
+                if type_ == 'track' and best.title == track_info['title']:
                     url = f"https://music.yandex.ru/album/{best.albums[0].id}/track/{best.id}"
             
                     return {
@@ -74,7 +74,7 @@ class YandexFinder(Finder):
 
             return {
                 'service': self.service['name'],
-                'url': None,
+                'url': f'https://music.yandex.ru/search?text={track_name}',
             }
         except Exception as e:
             print(f"Error Finding Yandex: {e}")
@@ -107,7 +107,7 @@ class MTSFinder(Finder):
         except Exception as e:
             print(f"Error Finding MTS: {e}")
             return {
-                'url': None,
+                'url': f'https://music.mts.ru/search?text={track_info['artists']} - {track_info['title']}',
                 'error': str(e),
                 'service': self.service['name'],
             }
