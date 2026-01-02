@@ -64,7 +64,7 @@ async def process_update_async(update_data):
         app = get_application()
         
         # Инициализируем приложение, если еще не инициализировано
-        if not app.initialized:
+        if not app._initialized:
             print("Initializing application...")
             await app.initialize()
             print("Application initialized")
