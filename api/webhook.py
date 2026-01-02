@@ -14,6 +14,26 @@ TOKEN = os.getenv('TELEGRAM_TOKEN')
 # Создаем приложение (глобально для переиспользования между вызовами)
 application = None
 
+# Предварительно инициализируем приложение, если токен доступен
+if TOKEN:
+    try:
+        print("Pre-initializing application...")
+        application = ApplicationBuilder().token(TOKEN).build()
+        handlers = BotHandlers()
+        handlers.setup_handlers(application)
+        
+        # Добавляем обработчик ошибок
+        async def error_handler(update, context):
+            print(f"Update {update} caused error {context.error}")
+            import traceback
+            traceback.print_exc()
+        
+        application.add_error_handler(error_handler)
+        print("Application pre-initialized successfully")
+    except Exception as e:
+        print(f"Error pre-initializing application: {e}")
+        application = None
+
 def get_application():
     """Получает или создает приложение Telegram бота"""
     global application
@@ -25,6 +45,14 @@ def get_application():
         application = ApplicationBuilder().token(TOKEN).build()
         handlers = BotHandlers()
         handlers.setup_handlers(application)
+        
+        # Добавляем обработчик ошибок
+        async def error_handler(update, context):
+            print(f"Update {update} caused error {context.error}")
+            import traceback
+            traceback.print_exc()
+        
+        application.add_error_handler(error_handler)
         print("Application created successfully")
     return application
 
