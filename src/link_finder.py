@@ -56,32 +56,74 @@ class YandexFinder(Finder):
     async def find(self, track_info):
         try:
             from yandex_music import Client
-            client = Client(os.getenv("YANDEX_MUSIC_TOKEN")).init()
+            import urllib.parse
+            
+            token = os.getenv("YANDEX_MUSIC_TOKEN")
+            if not token:
+                # Если токен не установлен, возвращаем ссылку на поиск
+                track_name = f"{track_info['artists']} - {track_info['title']}"
+                return {
+                    'service': self.service['name'],
+                    'url': f'https://music.yandex.ru/search?text={urllib.parse.quote(track_name)}',
+                }
+            
+            client = Client(token).init()
             track_name = f"{track_info['artists']} - {track_info['title']}"
-            search_result = client.search(track_name)
             
-            if search_result.best:
-                type_ = search_result.best.type
-                best = search_result.best.result
+            try:
+                search_result = client.search(track_name, type_='track', page=0, playlist_in_best=True)
                 
-                if type_ == 'track' and best.title == track_info['title']:
-                    url = f"https://music.yandex.ru/album/{best.albums[0].id}/track/{best.id}"
-            
-                    return {
-                        'service': self.service['name'],
-                        'url': url,
-                    }
+                # Пытаемся найти трек в результатах поиска
+                if search_result and search_result.tracks:
+                    tracks = search_result.tracks.results
+                    if tracks:
+                        # Берем первый результат
+                        track = tracks[0]
+                        if track and track.albums:
+                            url = f"https://music.yandex.ru/album/{track.albums[0].id}/track/{track.id}"
+                            return {
+                                'service': self.service['name'],
+                                'url': url,
+                            }
+                
+                # Если не нашли через tracks, пробуем через best
+                if search_result.best:
+                    try:
+                        type_ = search_result.best.type
+                        if type_ == 'track':
+                            best = search_result.best.result
+                            if best and best.albums:
+                                url = f"https://music.yandex.ru/album/{best.albums[0].id}/track/{best.id}"
+                                return {
+                                    'service': self.service['name'],
+                                    'url': url,
+                                }
+                    except Exception as best_error:
+                        print(f"Error processing best result: {best_error}")
+                        # Продолжаем выполнение
+                        pass
+                        
+            except Exception as search_error:
+                print(f"Error in Yandex search: {search_error}")
+                # Возвращаем ссылку на поиск при ошибке
+                pass
 
+            # Если ничего не нашли, возвращаем ссылку на поиск
             return {
                 'service': self.service['name'],
-                'url': f'https://music.yandex.ru/search?text={track_name}',
+                'url': f'https://music.yandex.ru/search?text={urllib.parse.quote(track_name)}',
             }
         except Exception as e:
             print(f"Error Finding Yandex: {e}")
+            import traceback
+            traceback.print_exc()
+            # При любой ошибке возвращаем ссылку на поиск вместо None
+            track_name = f"{track_info['artists']} - {track_info['title']}"
+            import urllib.parse
             return {
-                'url': None,
-                'error': str(e),
                 'service': self.service['name'],
+                'url': f'https://music.yandex.ru/search?text={urllib.parse.quote(track_name)}',
+                'error': str(e),
             }
         
 class MTSFinder(Finder):
